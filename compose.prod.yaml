@@ -1,0 +1,71 @@
+# The whole bank on one machine: nginx in front, the API behind it, MySQL and Redis alongside.
+#   cp .env.example .env            (set real passwords)
+#   docker compose -f compose.prod.yaml up -d --build
+# Then open http://localhost (or WEB_PORT). With FLORIN_DEMO_SEED=true a demo customer with four
+# months of history is created on first start.
+name: florin
+
+services:
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    deploy:
+      replicas: ${BACKEND_REPLICAS:-1}
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/florin
+      DB_USER: florin
+      DB_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      REDIS_HOST: redis
+      FLORIN_ALLOWED_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost}
+      FLORIN_DEMO_SEED: ${FLORIN_DEMO_SEED:-false}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health/readiness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: florin
+      MYSQL_USER: florin
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4
+    # Holds only session cache and rate-limit counters, so it is bounded and evicts instead of persisting.
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

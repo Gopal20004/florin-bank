@@ -1,0 +1,157 @@
+/*
+ * Florin design tokens. One accent (gold) on deep ink; cool silver in light mode (never cream).
+ * Shape rule: cards 22px outer / 16px inner (concentric double-bezel), inputs 14px, buttons and chips pill.
+ * Text colours were checked for WCAG AA; the chart series for each theme passed the dataviz validator.
+ */
+:root {
+  --font-sans: "Schibsted Grotesk Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Mona Sans Variable", "Schibsted Grotesk Variable", system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-xl: 22px;
+  --radius-lg: 16px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 160ms;
+  --dur: 320ms;
+  --dur-slow: 700ms;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --content-max: 1240px;
+  --qr-paper: #fbf7ec;
+  --qr-ink-1: #6b4a0c;
+  --qr-ink-2: #2b1e05;
+
+  /* Light theme (also the fallback) */
+  color-scheme: light;
+  --bg: #eceef2;
+  --bg-deep: #e3e6eb;
+  --surface: #f6f7f9;
+  --surface-2: #fdfdfe;
+  --surface-3: #eef0f4;
+  --hairline: rgba(19, 22, 28, 0.08);
+  --hairline-strong: rgba(19, 22, 28, 0.16);
+  --ink: #12151b;
+  --ink-2: #4a5160;
+  --muted: #687080;
+  --accent: #d6a43d;
+  --accent-strong: #c4922b;
+  --accent-ink: #1b1304;
+  --accent-text: #7a5410;
+  --accent-soft: rgba(214, 164, 61, 0.15);
+  --gold-text: linear-gradient(100deg, #8a5a08 0%, #c08f28 48%, #7a5410 100%);
+  --good: #176b43;
+  --good-soft: rgba(23, 107, 67, 0.11);
+  --bad: #b3261e;
+  --bad-soft: rgba(179, 38, 30, 0.1);
+  --warn: #8a5a00;
+  --warn-soft: rgba(138, 90, 0, 0.12);
+  --viz-series: #9a6b12;
+  --viz-grid: #e0e3e8;
+  --viz-axis: #c7cbd3;
+  --glass-bg: rgba(253, 253, 254, 0.72);
+  --glass-border: rgba(19, 22, 28, 0.08);
+  --aurora-1: rgba(226, 174, 62, 0.24);
+  --aurora-2: rgba(92, 120, 170, 0.12);
+  --ribbon: rgba(122, 84, 16, 0.13);
+  --ribbon-glint: rgba(176, 120, 20, 0.6);
+  --grain-opacity: 0.035;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.85) inset, 0 28px 56px -32px rgba(19, 22, 28, 0.32);
+  --shadow-float: 0 30px 70px -30px rgba(19, 22, 28, 0.38);
+  --shadow-gold: 0 14px 34px -14px rgba(196, 146, 43, 0.6);
+  --focus: 0 0 0 3px rgba(214, 164, 61, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #07090d;
+    --bg-deep: #040507;
+    --surface: #0f131a;
+    --surface-2: #151a23;
+    --surface-3: #1c222d;
+    --hairline: rgba(255, 255, 255, 0.075);
+    --hairline-strong: rgba(255, 255, 255, 0.14);
+    --ink: #f3f4f6;
+    --ink-2: #b5bac5;
+    --muted: #8b919d;
+    --accent: #e8b84a;
+    --accent-strong: #f3cd6d;
+    --accent-ink: #1b1304;
+    --accent-text: #ebc472;
+    --accent-soft: rgba(232, 184, 74, 0.13);
+    --gold-text: linear-gradient(100deg, #fff1c4 0%, #e8b84a 46%, #b9822a 100%);
+    --good: #5ec48f;
+    --good-soft: rgba(94, 196, 143, 0.13);
+    --bad: #f07461;
+    --bad-soft: rgba(240, 116, 97, 0.13);
+    --warn: #ebc472;
+    --warn-soft: rgba(235, 196, 114, 0.13);
+    --viz-series: #b8842a;
+    --viz-grid: #1c222c;
+    --viz-axis: #2a3140;
+    --glass-bg: rgba(15, 19, 26, 0.62);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --aurora-1: rgba(232, 184, 74, 0.13);
+    --aurora-2: rgba(70, 110, 170, 0.11);
+    --ribbon: rgba(235, 196, 114, 0.075);
+    --ribbon-glint: rgba(255, 226, 156, 0.75);
+    --grain-opacity: 0.05;
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.055) inset, 0 30px 60px -30px rgba(0, 0, 0, 0.85);
+    --shadow-float: 0 34px 90px -30px rgba(0, 0, 0, 0.9);
+    --shadow-gold: 0 16px 40px -14px rgba(232, 184, 74, 0.55);
+    --focus: 0 0 0 3px rgba(232, 184, 74, 0.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #07090d;
+  --bg-deep: #040507;
+  --surface: #0f131a;
+  --surface-2: #151a23;
+  --surface-3: #1c222d;
+  --hairline: rgba(255, 255, 255, 0.075);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --ink: #f3f4f6;
+  --ink-2: #b5bac5;
+  --muted: #8b919d;
+  --accent: #e8b84a;
+  --accent-strong: #f3cd6d;
+  --accent-ink: #1b1304;
+  --accent-text: #ebc472;
+  --accent-soft: rgba(232, 184, 74, 0.13);
+  --gold-text: linear-gradient(100deg, #fff1c4 0%, #e8b84a 46%, #b9822a 100%);
+  --good: #5ec48f;
+  --good-soft: rgba(94, 196, 143, 0.13);
+  --bad: #f07461;
+  --bad-soft: rgba(240, 116, 97, 0.13);
+  --warn: #ebc472;
+  --warn-soft: rgba(235, 196, 114, 0.13);
+  --viz-series: #b8842a;
+  --viz-grid: #1c222c;
+  --viz-axis: #2a3140;
+  --glass-bg: rgba(15, 19, 26, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --aurora-1: rgba(232, 184, 74, 0.13);
+  --aurora-2: rgba(70, 110, 170, 0.11);
+  --ribbon: rgba(235, 196, 114, 0.075);
+  --ribbon-glint: rgba(255, 226, 156, 0.75);
+  --grain-opacity: 0.05;
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.055) inset, 0 30px 60px -30px rgba(0, 0, 0, 0.85);
+  --shadow-float: 0 34px 90px -30px rgba(0, 0, 0, 0.9);
+  --shadow-gold: 0 16px 40px -14px rgba(232, 184, 74, 0.55);
+  --focus: 0 0 0 3px rgba(232, 184, 74, 0.4);
+}

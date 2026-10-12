@@ -1,0 +1,8 @@
+# Every test shares one client address and signs up many customers, so the per-address auth limit and
+# the per-customer money limit are lifted here. RateLimitTests checks the limiter on its own.
+florin:
+  rate-limit:
+    auth: { capacity: 10000, per: 1m }
+    money: { capacity: 10000, per: 1m }
+    lookup: { capacity: 10000, per: 1m }
+    write: { capacity: 10000, per: 1m }

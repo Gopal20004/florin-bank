@@ -1,0 +1,228 @@
+{
+  "info": {
+    "name": "Florin Bank API",
+    "description": "End-to-end walk through the Florin API: sign up, sign in, open accounts, move money, read statements. Run top to bottom (Postman runner or `newman run`). Every request asserts its status and the ones that create things save ids into collection variables for the next request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "email", "value": "" },
+    { "key": "password", "value": "postman-secret-1" },
+    { "key": "token", "value": "" },
+    { "key": "accountId", "value": "" },
+    { "key": "accountNumber", "value": "" },
+    { "key": "secondAccountId", "value": "" },
+    { "key": "secondAccountNumber", "value": "" },
+    { "key": "reference", "value": "" },
+    { "key": "idempotencyKey", "value": "" }
+  ],
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+  "item": [
+    {
+      "name": "01 Public config",
+      "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/config" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with bank rules', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.currency).to.eql('INR'); pm.expect(body.perTransactionLimit).to.be.above(0); });"
+      ] } }]
+    },
+    {
+      "name": "02 Register",
+      "request": {
+        "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/customers/register",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"fullName\":\"Postman Tester\",\"email\":\"{{email}}\",\"password\":\"{{password}}\"}" }
+      },
+      "event": [
+        { "listen": "prerequest", "script": { "exec": [
+          "pm.collectionVariables.set('email', 'postman-' + Date.now() + '@example.com');"
+        ] } },
+        { "listen": "test", "script": { "exec": [
+          "pm.test('201 with the new customer', () => { pm.response.to.have.status(201); const body = pm.response.json(); pm.expect(body.fullName).to.eql('Postman Tester'); pm.expect(body).to.not.have.property('passwordHash'); });"
+        ] } }
+      ]
+    },
+    {
+      "name": "03 Login",
+      "request": {
+        "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/auth/login",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{email}}\",\"password\":\"{{password}}\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with a bearer token', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.token).to.be.a('string'); pm.collectionVariables.set('token', body.token); });"
+      ] } }]
+    },
+    {
+      "name": "04 Wrong password is 401 problem JSON",
+      "request": {
+        "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/auth/login",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{email}}\",\"password\":\"not-the-password\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('401 with code INVALID_CREDENTIALS', () => { pm.response.to.have.status(401); pm.expect(pm.response.json().code).to.eql('INVALID_CREDENTIALS'); });"
+      ] } }]
+    },
+    {
+      "name": "05 My profile",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/customers/me" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with my email', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('email')); });"
+      ] } }]
+    },
+    {
+      "name": "06 Accounts (one savings account opened at sign-up)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with the starter savings account', () => { pm.response.to.have.status(200); const list = pm.response.json(); pm.expect(list).to.have.length(1); pm.expect(list[0].type).to.eql('SAVINGS'); pm.expect(list[0].balance).to.eql(0); pm.collectionVariables.set('accountId', list[0].id); pm.collectionVariables.set('accountNumber', list[0].accountNumber); });"
+      ] } }]
+    },
+    {
+      "name": "07 Open a current account",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/accounts",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"type\":\"CURRENT\",\"nickname\":\"Studio\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('201 with a 12-digit account number', () => { pm.response.to.have.status(201); const body = pm.response.json(); pm.expect(body.accountNumber).to.match(/^[1-9]\\d{11}$/); pm.collectionVariables.set('secondAccountId', body.id); pm.collectionVariables.set('secondAccountNumber', body.accountNumber); });"
+      ] } }]
+    },
+    {
+      "name": "08 Deposit 10,000",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/accounts/{{accountId}}/deposits",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+        "body": { "mode": "raw", "raw": "{\"amount\":10000,\"description\":\"Opening deposit\"}" }
+      },
+      "event": [
+        { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('idempotencyKey', 'postman-' + Date.now());"] } },
+        { "listen": "test", "script": { "exec": [
+          "pm.test('201 with a receipt', () => { pm.response.to.have.status(201); const body = pm.response.json(); pm.expect(body.type).to.eql('DEPOSIT'); pm.expect(body.reference).to.match(/^FLR/); pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('false'); });"
+        ] } }
+      ]
+    },
+    {
+      "name": "09 Same deposit again (replayed, not repeated)",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/accounts/{{accountId}}/deposits",
+        "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+        "body": { "mode": "raw", "raw": "{\"amount\":10000,\"description\":\"Opening deposit\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('201 marked as a replay', () => { pm.response.to.have.status(201); pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('true'); });"
+      ] } }]
+    },
+    {
+      "name": "10 Balance is 10,000 (not 20,000)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/{{accountId}}/balance" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('balance inquiry', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().balance).to.eql(10000); });"
+      ] } }]
+    },
+    {
+      "name": "11 Withdraw 2,500.50",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/accounts/{{accountId}}/withdrawals",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"amount\":2500.50,\"description\":\"Rent advance\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('201 withdrawal', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().type).to.eql('WITHDRAWAL'); });"
+      ] } }]
+    },
+    {
+      "name": "12 Overdraft is refused (422)",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/accounts/{{accountId}}/withdrawals",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"amount\":50000}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "// 50,000 is under the per-payment limit (checked first) but over the 7,499.50 balance.",
+        "pm.test('422 INSUFFICIENT_FUNDS with available balance', () => { pm.response.to.have.status(422); const body = pm.response.json(); pm.expect(body.code).to.eql('INSUFFICIENT_FUNDS'); pm.expect(body.available).to.eql(7499.5); });"
+      ] } }]
+    },
+    {
+      "name": "13 Transfer 1,200 to the current account",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/transfers",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"fromAccountId\":{{accountId}},\"toAccountNumber\":\"{{secondAccountNumber}}\",\"amount\":1200,\"description\":\"Studio float\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('201 transfer with both legs', () => { pm.response.to.have.status(201); const body = pm.response.json(); pm.expect(body.type).to.eql('TRANSFER'); pm.expect(body.from.own).to.eql(true); pm.expect(body.to.own).to.eql(true); pm.collectionVariables.set('reference', body.reference); });"
+      ] } }]
+    },
+    {
+      "name": "14 Receipt by reference",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/transactions/{{reference}}" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with the same reference', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().reference).to.eql(pm.collectionVariables.get('reference')); });"
+      ] } }]
+    },
+    {
+      "name": "15 Activity, newest first",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/activity?size=10" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with four ledger lines', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.totalElements).to.eql(4); pm.expect(body.content[0].type).to.eql('TRANSFER'); pm.expect(body.content[0].balanceAfter).to.eql(1200); });"
+      ] } }]
+    },
+    {
+      "name": "16 Account transactions with running balance",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/{{accountId}}/transactions" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 and the running balance ends at 6,299.50', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().content[0].balanceAfter).to.eql(6299.5); });"
+      ] } }]
+    },
+    {
+      "name": "17 Statement CSV",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/accounts/{{accountId}}/statement?from=2026-01-01&to=2026-12-31" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 text/csv attachment', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'); pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment'); pm.expect(pm.response.text()).to.include('Date,Reference,Description'); });"
+      ] } }]
+    },
+    {
+      "name": "18 Look up an account number",
+      "request": {
+        "method": "POST", "url": "{{baseUrl}}/api/payees/lookup",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"accountNumber\":\"{{secondAccountNumber}}\"}" }
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 masked holder name', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.holderName).to.eql('Postman T.'); pm.expect(body.ownAccount).to.eql(true); });"
+      ] } }]
+    },
+    {
+      "name": "19 Daily limits",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/limits" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200: only the withdrawal counted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().usedToday).to.eql(2500.5); });"
+      ] } }]
+    },
+    {
+      "name": "20 Insights",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/insights?days=30" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with 30 history points', () => { pm.response.to.have.status(200); const body = pm.response.json(); pm.expect(body.history).to.have.length(30); pm.expect(body.totalBalance).to.eql(7499.5); });"
+      ] } }]
+    },
+    {
+      "name": "21 Signed-in sessions",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/sessions" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 with this session marked current', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().some(s => s.current)).to.eql(true); });"
+      ] } }]
+    },
+    {
+      "name": "22 Logout",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/auth/logout" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('204', () => pm.response.to.have.status(204));"] } }]
+    },
+    {
+      "name": "23 Token no longer works",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/customers/me" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('401 after logout', () => pm.response.to.have.status(401));"] } }]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+# Local development: just the databases. Run the API with ./mvnw spring-boot:run (in backend/) and the
+# web app with npm run dev (in frontend/).
+#   docker compose up -d --wait
+name: florin-dev
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-florin-root-dev}
+      MYSQL_DATABASE: florin
+      MYSQL_USER: florin
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-florin}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mysql_data:
